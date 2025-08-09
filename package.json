@@ -21,14 +21,14 @@
   "homepage": "https://github.com/farhan8883-max/perternakan#readme",
   "dependencies": {
     "bcryptjs": "^3.0.2",
-    "body-parser": "^2.2.0",
     "cors": "^2.8.5",
+    "cross": "^1.0.0",
     "dotenv": "^17.2.1",
     "express": "^5.1.0",
+    "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.2",
     "mysql": "^2.18.1",
     "mysql2": "^3.14.3",
-    "node": "^22.18.0",
     "sequelize": "^6.37.7"
   },
   "devDependencies": {
