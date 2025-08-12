@@ -333,6 +333,25 @@ app.get('/ternak/user/:id_peternak', (req, res) => {
   });
 });
 
+app.get('/checklist/peternak/:id_peternak', (req, res) => {
+  const id_peternak = req.params.id_peternak;
+  const sql = `
+    SELECT c.*, t.nama_peternak, t.jumlah_ternak, t.lokasi_kejadian, u.username, u.email, u.hp
+    FROM checklist c
+    JOIN ternak t ON c.id_ternak = t.id
+    JOIN user u ON t.id_peternak = u.id
+    WHERE t.id_peternak = ?
+  `;
+  connection.query(sql, [id_peternak], (err, results) => {
+    if (err) {
+      console.error('Gagal mengambil data checklist:', err);
+      return res.status(500).json({ error: 'Gagal mengambil data checklist' });
+    }
+    res.json(results);
+  });
+});
+
+
 
 // =================== CRUD CHECKLIST ===================
 
