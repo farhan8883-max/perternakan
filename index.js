@@ -269,7 +269,8 @@ app.put('/ternak/:id', (req, res) => {
       return res.status(404).json({ message: 'Data ternak tidak ditemukan' });
     }
     res.json({ message: 'Data ternak berhasil diperbarui' });
-  });
+  });const bodyParser = require("body-parser");
+
 });
 
 
@@ -313,6 +314,14 @@ app.post('/login', (req, res) => {
       res.json({ token });
     });
   });
+});
+
+// Tambah data ternak (POST)
+app.post("/ternak", (req, res) => {
+  const data = req.body;
+  const newData = { id: nextId++, ...data };
+  ternakList.push(newData);
+  res.status(201).json({ message: "Ternak berhasil ditambahkan", data: newData });
 });
 
 // GET ternak berdasarkan id_peternak (user yang login)
@@ -415,6 +424,26 @@ app.post('/checklist', upload.single('foto'), (req, res) => {
     if (err) return res.status(500).json({ error: 'Gagal menambahkan checklist' });
     res.status(201).json({ message: 'Checklist berhasil dibuat', id: result.insertId, foto: fotoPath });
   });
+});
+
+// ===========no foto -=-----===
+app.post('/checklist', async (req, res) => {
+  try {
+    const { id_ternak, tanggal, status, catatan } = req.body;
+
+    if (!id_ternak || !tanggal || !status) {
+      return res.status(400).json({ message: 'Data tidak lengkap' });
+    }
+
+    // Simpan ke database
+    const sql = `INSERT INTO checklist (id_ternak, tanggal, status, catatan) VALUES (?, ?, ?, ?)`;
+    await db.query(sql, [id_ternak, tanggal, status, catatan]);
+
+    res.status(201).json({ message: 'Checklist berhasil ditambahkan' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Terjadi kesalahan server' });
+  }
 });
 
 
