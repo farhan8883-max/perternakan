@@ -92,6 +92,26 @@ app.post('/ternak', upload.single('foto'), (req, res) => {
   console.log(req.body); // data lainnya
 });
 
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    return res.status(401).json({ message: 'Token tidak ada atau format salah' });
+  }
+  const token = authHeader.split(' ')[1];
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded; // simpan data user di request
+    next();
+  } catch (err) {
+    return res.status(403).json({ message: 'Token tidak valid' });
+  }
+}
+
+app.use('/uploads', express.static('uploads'));
+
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
+
 
 
 module.exports = authenticateToken;

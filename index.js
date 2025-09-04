@@ -6,14 +6,14 @@ require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const path = require('path');
-const multer = require('multer');
+const multer = require('multer')
 app.use(cors());
 const SECRET_KEY = process.env.SECRET_KEY || 'rahasia_saya';
 
 // app.js atau file utama server Anda
 
 
-
+app.use(express.static('public'));
 // const mysql = require('mysql');
 
 const mysql = require('mysql');
@@ -27,7 +27,7 @@ const connection = mysql.createConnection({
 });
 
 const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
+  destination: (req, file, cb) => {s
     cb(null, 'uploads/'); // folder penyimpanan
   },
   filename: (req, file, cb) => {
@@ -66,6 +66,7 @@ connection.query('SELECT * FROM user', (err, results) => {
 //   host:
 
 app.use(express.json());
+
 
 app.get('/user', (req, res) => {
   connection.query('SELECT * FROM user', (err, results) => {
@@ -106,6 +107,7 @@ app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
+
 
 app.post('/user', (req, res) => {
   const { username, password, email, hp, akses } = req.body;
@@ -224,15 +226,11 @@ app.get('/ternak', (req, res) => {
 });
 
 
-// POST data ternak baru
 app.post('/ternak', upload.single('foto'), (req, res) => {
   const { nama_peternak, id_peternak, tanggal_kejadian, jenis_laporan, jumlah_ternak, lokasi_kejadian, keterangan } = req.body;
   
-  if (!req.file) {
-    return res.status(400).json({ error: 'Foto wajib diunggah' });
-  }
-
-  const fotoPath = `/uploads/${req.file.filename}`;
+  // Kalau tidak ada file foto, set fotoPath ke null
+  const fotoPath = req.file ? `/uploads/${req.file.filename}` : null;
 
   connection.query('SELECT * FROM user WHERE id = ?', [id_peternak], (err, results) => {
     if (err) return res.status(500).json({ error: 'Kesalahan server' });
@@ -250,17 +248,21 @@ app.post('/ternak', upload.single('foto'), (req, res) => {
 });
 
 
+
 // PUT update data ternak
 app.put('/ternak/:id', (req, res) => {
   const { id } = req.params;
   const { nama_peternak, id_peternak, tanggal_kejadian, jenis_laporan, jumlah_ternak, lokasi_kejadian, keterangan, foto } = req.body;
+
+  // Set foto ke null jika tidak ada isinya
+  const fotoValue = foto ? foto : null;
 
   const query = `
     UPDATE ternak
     SET nama_peternak=?, id_peternak=?, tanggal_kejadian=?, jenis_laporan=?, jumlah_ternak=?, lokasi_kejadian=?, keterangan=?, foto=?
     WHERE id=?
   `;
-  connection.query(query, [nama_peternak, id_peternak, tanggal_kejadian, jenis_laporan, jumlah_ternak, lokasi_kejadian, keterangan, foto, id], (err, result) => {
+  connection.query(query, [nama_peternak, id_peternak, tanggal_kejadian, jenis_laporan, jumlah_ternak, lokasi_kejadian, keterangan, fotoValue, id], (err, result) => {
     if (err) {
       console.error('Gagal mengupdate data ternak:', err);
       return res.status(500).json({ error: 'Gagal mengupdate data ternak' });
@@ -269,8 +271,10 @@ app.put('/ternak/:id', (req, res) => {
       return res.status(404).json({ message: 'Data ternak tidak ditemukan' });
     }
     res.json({ message: 'Data ternak berhasil diperbarui' });
-  });
+  });const bodyParser = require("body-parser");
+
 });
+
 
 // DELETE data ternak
 app.delete('/ternak/:id', (req, res) => {
@@ -314,6 +318,22 @@ app.post('/login', (req, res) => {
   });
 });
 
+// Tambah data ternak (POST)
+app.post("/ternak", (req, res) => {
+  const data = req.body;
+  const newData = { id: nextId++, ...data };
+  ternakList.push(newData);
+  res.status(201).json({ message: "Ternak berhasil ditambahkan", data: newData });
+});
+
+app.post("/ternak", (req, res) => {
+  const data = req.body;
+  db.query("INSERT INTO ternak SET ?", data, (err, result) => {
+    if (err) return res.status(500).json({ error: err.message });
+    res.status(201).json({ id: result.insertId, ...data });
+  });
+});
+
 // GET ternak berdasarkan id_peternak (user yang login)
 app.get('/ternak/user/:id_peternak', (req, res) => {
   const id_peternak = req.params.id_peternak;
@@ -331,6 +351,25 @@ app.get('/ternak/user/:id_peternak', (req, res) => {
     res.json(results);
   });
 });
+
+app.get('/checklist/peternak/:id_peternak', (req, res) => {
+  const id_peternak = req.params.id_peternak;
+  const sql = `
+    SELECT c.*, t.nama_peternak, t.jumlah_ternak, t.lokasi_kejadian, u.username, u.email, u.hp
+    FROM checklist c
+    JOIN ternak t ON c.id_ternak = t.id
+    JOIN user u ON t.id_peternak = u.id
+    WHERE t.id_peternak = ?
+  `;
+  connection.query(sql, [id_peternak], (err, results) => {
+    if (err) {
+      console.error('Gagal mengambil data checklist:', err);
+      return res.status(500).json({ error: 'Gagal mengambil data checklist' });
+    }
+    res.json(results);
+  });
+});
+
 
 
 // =================== CRUD CHECKLIST ===================
@@ -378,12 +417,9 @@ app.get('/checklist/:id', (req, res) => {
 // POST tambah checklist baru
 app.post('/checklist', upload.single('foto'), (req, res) => {
   const data = req.body;
-
-  if (!req.file) {
-    return res.status(400).json({ error: 'Foto wajib diunggah' });
-  }
-
-  const fotoPath = `/uploads/${req.file.filename}`;
+  
+  // Jika foto ada, buat pathnya, jika tidak ada, beri nilai null atau empty string
+  const fotoPath = req.file ? `/uploads/${req.file.filename}` : null;
 
   const sql = `
     INSERT INTO checklist 
@@ -400,10 +436,67 @@ app.post('/checklist', upload.single('foto'), (req, res) => {
   });
 });
 
+// POST checklist tanpa foto
+app.post('/checklist', (req, res) => {
+  const data = req.body;
+
+  // Pastikan semua field yang ingin dimasukkan ada di sini
+  const sql = `
+    INSERT INTO checklist 
+    (id_ternak, nama_petugas, id_petugas, id_laporan, check_lokasi, check_sesuai_jumlah, check_ada_foto, check_lengkap, status, catatan_petugas, tanggal_update) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `;
+  connection.query(sql, [
+    data.id_ternak,
+    data.nama_petugas,
+    data.id_petugas,
+    data.id_laporan,
+    data.check_lokasi || 'Belum Dicek',       // default jika kosong
+    data.check_sesuai_jumlah || 'Belum Dicek',
+    data.check_ada_foto || 'Tidak Ada',
+    data.check_lengkap || 'Belum Lengkap',
+    data.status || 'Perlu Perbaikan',
+    data.catatan_petugas || '',
+    data.tanggal_update || new Date().toISOString().split('T')[0]
+  ], (err, result) => {
+    if (err) {
+      console.error('Gagal menambahkan checklist:', err);
+      return res.status(500).json({ error: 'Gagal menambahkan checklist' });
+    }
+    res.status(201).json({ message: 'Checklist berhasil dibuat', id: result.insertId });
+  });
+});
+
+
+// ===========no foto -=-----===
+app.post('/checklist', async (req, res) => {
+  try {
+    const { id_ternak, tanggal, status, catatan } = req.body;
+
+    if (!id_ternak || !tanggal || !status) {
+      return res.status(400).json({ message: 'Data tidak lengkap' });
+    }
+
+    // Simpan ke database
+    const sql = `INSERT INTO checklist (id_ternak, tanggal, status, catatan) VALUES (?, ?, ?, ?)`;
+    await db.query(sql, [id_ternak, tanggal, status, catatan]);
+
+    res.status(201).json({ message: 'Checklist berhasil ditambahkan' });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: 'Terjadi kesalahan server' });
+  }
+});
+
+
 
 // PUT update checklist
-app.put('/checklist/:id', (req, res) => {
+app.put('/checklist/:id', upload.single('foto'), (req, res) => {
   const data = req.body;
+
+  // Jika ada file foto baru, gunakan path baru, kalau tidak ada, gunakan foto lama yang dikirim di body (atau bisa null)
+  const fotoPath = req.file ? `/uploads/${req.file.filename}` : data.foto;
+
   const sql = `
     UPDATE checklist SET 
     id_ternak=?, nama_petugas=?, id_petugas=?, id_laporan=?, check_lokasi=?, 
@@ -413,7 +506,7 @@ app.put('/checklist/:id', (req, res) => {
   connection.query(sql, [
     data.id_ternak, data.nama_petugas, data.id_petugas, data.id_laporan,
     data.check_lokasi, data.check_sesuai_jumlah, data.check_ada_foto, data.check_lengkap,
-    data.status, data.catatan_petugas, data.foto, req.params.id
+    data.status, data.catatan_petugas, fotoPath, req.params.id
   ], (err, result) => {
     if (err) {
       console.error('Gagal mengupdate checklist:', err);
@@ -425,6 +518,33 @@ app.put('/checklist/:id', (req, res) => {
     res.json({ message: 'Checklist berhasil diperbarui' });
   });
 });
+
+// UPDATE checklist
+app.put('/checklist/:id', (req, res) => {
+  const data = req.body;
+  const { id } = req.params;
+
+  const sql = `
+    UPDATE checklist 
+    SET id_ternak=?, nama_petugas=?, id_petugas=?, id_laporan=?, 
+        check_lokasi=?, check_sesuai_jumlah=?, check_ada_foto=?, check_lengkap=?, 
+        status=?, catatan_petugas=?, tanggal_update=? 
+    WHERE id=?
+  `;
+
+  connection.query(sql, [
+    data.id_ternak, data.nama_petugas, data.id_petugas, data.id_laporan,
+    data.check_lokasi, data.check_sesuai_jumlah, data.check_ada_foto, data.check_lengkap,
+    data.status, data.catatan_petugas, data.tanggal_update, id
+  ], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Gagal update checklist' });
+    res.json({ message: 'Checklist berhasil diupdate' });
+  });
+});
+
+
+
+
 
 // DELETE hapus checklist
 app.delete('/checklist/:id', (req, res) => {
@@ -457,6 +577,37 @@ app.get('/checklist/ternak/:id_ternak', (req, res) => {
     res.json(results);
   });
 });
+
+app.get('/ternak', (req, res) => {
+  const query = `
+    SELECT jenis_laporan, SUM(jumlah_ternak) AS total
+    FROM ternak
+    GROUP BY jenis_laporan
+  `;
+  connection.query(query, (err, results) => {
+    if (err) return res.status(500).json({ error: 'Gagal mengambil data' });
+    res.json(results);
+  });
+});
+
+// Endpoint PUT update data ternak
+app.put('/ternak/:id', (req, res) => {
+  const { id } = req.params;
+  const { nama_peternak, id_peternak, tanggal_kejadian, jenis_laporan, jumlah_ternak, lokasi_kejadian, keterangan, foto } = req.body;
+  const fotoValue = foto ? foto : null;
+
+  const query = `
+    UPDATE ternak SET
+    nama_peternak=?, id_peternak=?, tanggal_kejadian=?, jenis_laporan=?, jumlah_ternak=?, lokasi_kejadian=?, keterangan=?, foto=?
+    WHERE id=?
+  `;
+  connection.query(query, [nama_peternak, id_peternak, tanggal_kejadian, jenis_laporan, jumlah_ternak, lokasi_kejadian, keterangan, fotoValue, id], (err, result) => {
+    if (err) return res.status(500).json({ error: 'Gagal mengupdate data ternak' });
+    if (result.affectedRows === 0) return res.status(404).json({ message: 'Data ternak tidak ditemukan' });
+    res.json({ message: 'Data ternak berhasil diperbarui' });
+  });
+});
+
 
 
 
