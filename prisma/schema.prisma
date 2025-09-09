@@ -1,0 +1,50 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id       Int       @id @default(autoincrement())
+  username String
+  password String
+  email    String
+  hp       String
+  akses    String
+  ternak   Ternak[]
+}
+
+model Ternak {
+  id              Int         @id @default(autoincrement())
+  nama_peternak   String
+  id_peternak     Int
+  tanggal_kejadian DateTime
+  jenis_laporan   String
+  jumlah_ternak   Int
+  lokasi_kejadian String
+  keterangan      String?
+  foto            String?
+  user            User        @relation(fields: [id_peternak], references: [id])
+  checklist       Checklist[]
+}
+
+model Checklist {
+  id              Int      @id @default(autoincrement())
+  id_ternak       Int
+  nama_petugas    String
+  id_petugas      Int
+  id_laporan      String?
+  check_lokasi    String?
+  check_sesuai_jumlah String?
+  check_ada_foto  String?
+  check_lengkap   String?
+  status          String
+  catatan_petugas String?
+  foto            String?
+  tanggal_update  DateTime? @default(now())
+  ternak          Ternak   @relation(fields: [id_ternak], references: [id])
+}
